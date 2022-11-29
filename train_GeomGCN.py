@@ -34,28 +34,11 @@ import utils_data
 from utils_layers import GeomGCNNet
 from init_layers import init_layers
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--dataset', type=str, default='cornell')
-    parser.add_argument('--dataset_embedding', type=str, default='poincare')
-    parser.add_argument('--num_hidden', type=int, default=48)
-    parser.add_argument('--num_heads_layer_one', type=int, default=1)
-    parser.add_argument('--num_heads_layer_two', type=int, default=1)
-    parser.add_argument('--layer_one_ggcn_merge', type=str, default='cat')
-    parser.add_argument('--layer_two_ggcn_merge', type=str, default='mean')
-    parser.add_argument('--layer_one_channel_merge', type=str, default='cat')
-    parser.add_argument('--layer_two_channel_merge', type=str, default='mean')
-    parser.add_argument('--dropout_rate', type=float, default=5e-1)
-    parser.add_argument('--learning_rate', type=float, default=5e-2)
-    parser.add_argument('--weight_decay_layer_one', type=float, default=5e-6)
-    parser.add_argument('--weight_decay_layer_two', type=float, default=5e-6)
-    parser.add_argument('--num_epochs_patience', type=int, default=100)
-    parser.add_argument('--num_epochs_max', type=int, default=5000)
-    parser.add_argument('--run_id', type=str, default=0)
-    parser.add_argument('--dataset_split', type=str, default='splits/cornell_split_0.6_0.2_5.npz')
-    parser.add_argument('--learning_rate_decay_patience', type=int, default=50)
-    parser.add_argument('--learning_rate_decay_factor', type=float, default=0.8)
-    args = parser.parse_args()
+from ray import tune
+
+def pipe(config:dict):
+    config['dataset_split'] = f"splits/{config['dataset']}_split_0.6_0.2_{config['dataset_split']}.npz"
+    args = argparse.Namespace(**config)
     vars(args)['model'] = 'GeomGCN_TwoLayers'
 
     t1 = time.time()
@@ -97,7 +80,8 @@ if __name__ == '__main__':
     test_mask = test_mask.cuda()
 
     # initialize layer with nim
-    a_list = init_layers(g, features, net, 'nimback')
+    print('--- initialize layers ---')
+    a_list = init_layers(g, features, net, args.init)
 
     # Adapted from https://github.com/PetarV-/GAT/blob/master/execute_cora.py
     patience = args.num_epochs_patience
@@ -110,6 +94,7 @@ if __name__ == '__main__':
 
     # Adapted from https://docs.dgl.ai/tutorials/models/1_gnn/1_gcn.html
     dur = []
+    train_curve, valid_curve = [], []
     print("--- start training ---")
     for epoch in range(args.num_epochs_max):
         t0 = time.time()
@@ -133,6 +118,9 @@ if __name__ == '__main__':
             val_pred = val_logp.argmax(dim=1)
             val_acc = th.eq(val_pred[val_mask], labels[val_mask]).float().mean().item()
 
+        train_curve.append(train_acc)
+        valid_curve.append(val_acc)
+
         learning_rate_scheduler.step(val_loss)
 
         dur.append(time.time() - t0)
@@ -145,8 +133,6 @@ if __name__ == '__main__':
         # Adapted from https://github.com/PetarV-/GAT/blob/master/execute_cora.py
         if val_acc >= vacc_mx or val_loss <= vlss_mn:
             if val_acc >= vacc_mx and val_loss <= vlss_mn:
-                vacc_early_model = val_acc
-                vlss_early_model = val_loss
                 state_dict_early_model = net.state_dict()
             vacc_mx = np.max((val_acc, vacc_mx))
             vlss_mn = np.min((val_loss, vlss_mn))
@@ -164,11 +150,6 @@ if __name__ == '__main__':
         test_loss = F.nll_loss(test_logp[test_mask], labels[test_mask]).item()
         test_pred = test_logp.argmax(dim=1)
         test_acc = th.eq(test_pred[test_mask], labels[test_mask]).float().mean().item()
-        test_hidden_features = net.geomgcn1(features).cpu().numpy()
-
-        final_train_pred = test_pred[train_mask].cpu().numpy()
-        final_val_pred = test_pred[val_mask].cpu().numpy()
-        final_test_pred = test_pred[test_mask].cpu().numpy()
 
     results_dict = vars(args)
     results_dict['test_loss'] = test_loss
@@ -179,3 +160,75 @@ if __name__ == '__main__':
     results_dict['total_time'] = sum(dur)
 
     print(f"Test acc: {test_acc}")
+    return train_curve, valid_curve, test_acc
+
+def tune_pipe(config):
+    train_curve, valid_curve, test_acc = pipe(config)
+    tune.report(train_curve=train_curve, valid_curve=valid_curve, test_acc=test_acc)
+
+def run_ray():
+    exp = 64
+    num_samples = 1
+    searchSpace = {
+        'dataset': 'chameleon',
+        'dataset_embedding': 'poincare',
+        'num_hidden': tune.grid_search([32, 48, 64, 128]),
+        'num_heads_layer_one': 1,
+        'num_heads_layer_two': 1,
+        'layer_one_ggcn_merge': 'cat',
+        'layer_two_ggcn_merge': 'mean',
+        'layer_one_channel_merge': 'cat',
+        'layer_two_channel_merge': 'mean',
+        'dropout_rate': tune.grid_search([0.0, 0.5]),
+        'learning_rate': tune.grid_search([5e-3, 1e-3, 5e-2, 1e-2]),
+        'weight_decay_layer_one': tune.grid_search([5e-6, 1e-6, 5e-5, 1e-5]),
+        'weight_decay_layer_two': tune.grid_search([5e-6, 1e-6, 5e-5, 1e-5]),
+        'num_epochs_patience': 100,
+        'num_epochs_max': 5000,
+        'dataset_split': tune.grid_search([0, 1, 2, 3, 4]),
+        'learning_rate_decay_patience': tune.grid_search([50, 70]),
+        'learning_rate_decay_factor': tune.grid_search([0.5, 0.8]),
+        'init': tune.grid_search(['nimfor', 'nimback'])
+    }
+    
+    print(searchSpace)
+
+    analysis=tune.run(tune_pipe, config=searchSpace, name=f"{exp}", num_samples=num_samples, \
+        resources_per_trial={'cpu': 12, 'gpu':1}, log_to_file=f"out.log", \
+        local_dir="/mnt/jiahanli/nim_output", max_failures=3)
+
+def run_test():
+    searchSpace = {
+        'dataset': 'chameleon',
+        'dataset_embedding': 'poincare',
+        'num_hidden': 48,
+        'num_heads_layer_one': 1,
+        'num_heads_layer_two': 1,
+        'layer_one_ggcn_merge': 'cat',
+        'layer_two_ggcn_merge': 'mean',
+        'layer_one_channel_merge': 'cat',
+        'layer_two_channel_merge': 'mean',
+        'dropout_rate': 5e-1,
+        'learning_rate': 5e-2,
+        'weight_decay_layer_one': 5e-6,
+        'weight_decay_layer_two': 5e-6,
+        'num_epochs_patience': 100,
+        'num_epochs_max': 5000,
+        'dataset_split': 5,
+        'learning_rate_decay_patience': 50,
+        'learning_rate_decay_factor': 0.8,
+        'init': 'xav'
+    }
+    print(searchSpace)
+    pipe(searchSpace)
+
+if __name__ == "__main__":
+    run='test'
+    
+    if run == 'test':
+        run_test()
+    elif run == 'ray':
+        run_ray()
+    
+
+    print(1)
