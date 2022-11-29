@@ -20,6 +20,7 @@
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 #  SOFTWARE.
 
+import dgl
 import dgl.function as fn
 import torch as th
 import torch.nn as nn
@@ -160,12 +161,15 @@ class GeomGCNSingleChannel(nn.Module):
 
         for i in range(self.num_divisions):
             subgraph = self.g.edge_subgraph(self.subgraph_edge_list_of_list[i])
-            subgraph.copy_from_parent()
+            # subgraph.copy_from_parent()
             subgraph.ndata[f'Wh_{i}'] = self.linear_for_each_division[i](subgraph.ndata['h']) * subgraph.ndata['norm']
             subgraph.update_all(message_func=fn.copy_u(u=f'Wh_{i}', out=f'm_{i}'),
                                 reduce_func=fn.sum(msg=f'm_{i}', out=f'h_{i}'))
             subgraph.ndata.pop(f'Wh_{i}')
-            subgraph.copy_to_parent()
+            # subgraph.copy_to_parent()
+            _feature = th.zeros((feature.size(0), self.out_feats), dtype=th.float32, device=feature.device)
+            _feature[subgraph.ndata[dgl.NID]] = subgraph.ndata[f'h_{i}']
+            self.g.ndata[f'h_{i}'] = _feature
 
         self.g.ndata.pop('h')
         

@@ -1,0 +1,4 @@
+*.venv/
+*.venv/*
+*new_data/*
+*__pycache__*

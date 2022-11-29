@@ -197,7 +197,8 @@ def load_data(dataset_name, splits_file_path=None, train_percentage=None, val_pe
 
     # Adapted from https://docs.dgl.ai/tutorials/models/1_gnn/1_gcn.html
     degs = g.in_degrees().float()
-    norm = th.pow(degs, -0.5).cuda()
+    # norm = th.pow(degs, -0.5).cuda()
+    norm = th.pow(degs, -0.5)
     norm[th.isinf(norm)] = 0
     g.ndata['norm'] = norm.unsqueeze(1)
 

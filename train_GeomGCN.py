@@ -27,7 +27,6 @@ import time
 
 import dgl.init
 import numpy as np
-import tensorboardX
 import torch as th
 import torch.nn.functional as F
 
@@ -36,40 +35,44 @@ from utils_layers import GeomGCNNet
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--dataset', type=str)
-    parser.add_argument('--dataset_embedding', type=str)
-    parser.add_argument('--num_hidden', type=int)
-    parser.add_argument('--num_heads_layer_one', type=int)
-    parser.add_argument('--num_heads_layer_two', type=int)
+    parser.add_argument('--dataset', type=str, default='chameleon')
+    parser.add_argument('--dataset_embedding', type=str, default='poincare')
+    parser.add_argument('--num_hidden', type=int, default=48)
+    parser.add_argument('--num_heads_layer_one', type=int, default=1)
+    parser.add_argument('--num_heads_layer_two', type=int, default=1)
     parser.add_argument('--layer_one_ggcn_merge', type=str, default='cat')
     parser.add_argument('--layer_two_ggcn_merge', type=str, default='mean')
     parser.add_argument('--layer_one_channel_merge', type=str, default='cat')
     parser.add_argument('--layer_two_channel_merge', type=str, default='mean')
-    parser.add_argument('--dropout_rate', type=float)
-    parser.add_argument('--learning_rate', type=float)
-    parser.add_argument('--weight_decay_layer_one', type=float)
-    parser.add_argument('--weight_decay_layer_two', type=float)
+    parser.add_argument('--dropout_rate', type=float, default=5e-1)
+    parser.add_argument('--learning_rate', type=float, default=5e-2)
+    parser.add_argument('--weight_decay_layer_one', type=float, default=5e-6)
+    parser.add_argument('--weight_decay_layer_two', type=float, default=5e-6)
     parser.add_argument('--num_epochs_patience', type=int, default=100)
     parser.add_argument('--num_epochs_max', type=int, default=5000)
-    parser.add_argument('--run_id', type=str)
-    parser.add_argument('--dataset_split', type=str)
+    parser.add_argument('--run_id', type=str, default=0)
+    parser.add_argument('--dataset_split', type=str, default='splits/chameleon_split_0.6_0.2_5.npz')
     parser.add_argument('--learning_rate_decay_patience', type=int, default=50)
     parser.add_argument('--learning_rate_decay_factor', type=float, default=0.8)
     args = parser.parse_args()
     vars(args)['model'] = 'GeomGCN_TwoLayers'
 
     t1 = time.time()
+    print("--- load datasets ---")
     if args.dataset_split == 'jknet':
         g, features, labels, train_mask, val_mask, test_mask, num_features, num_labels = utils_data.load_data(
             args.dataset, None, 0.6, 0.2, 'GeomGCN', args.dataset_embedding)
     else:
         g, features, labels, train_mask, val_mask, test_mask, num_features, num_labels = utils_data.load_data(
             args.dataset, args.dataset_split, None, None, 'GeomGCN', args.dataset_embedding)
-    print(time.time() - t1)
+    print(f"period of loading dataset {time.time() - t1}")
 
     g.set_n_initializer(dgl.init.zero_initializer)
     g.set_e_initializer(dgl.init.zero_initializer)
 
+    g = g.to('cuda')
+
+    print("--- load models ---")
     net = GeomGCNNet(g=g, num_input_features=num_features, num_output_classes=num_labels, num_hidden=args.num_hidden,
                      num_divisions=9, dropout_rate=args.dropout_rate,
                      num_heads_layer_one=args.num_heads_layer_one, num_heads_layer_two=args.num_heads_layer_two,
@@ -84,8 +87,8 @@ if __name__ == '__main__':
     learning_rate_scheduler = th.optim.lr_scheduler.ReduceLROnPlateau(optimizer=optimizer,
                                                                       factor=args.learning_rate_decay_factor,
                                                                       patience=args.learning_rate_decay_patience)
-    writer = tensorboardX.SummaryWriter(logdir=f'runs/{args.model}_{args.run_id}')
 
+    
     net.cuda()
     features = features.cuda()
     labels = labels.cuda()
@@ -104,6 +107,7 @@ if __name__ == '__main__':
 
     # Adapted from https://docs.dgl.ai/tutorials/models/1_gnn/1_gcn.html
     dur = []
+    print("--- start training ---")
     for epoch in range(args.num_epochs_max):
         t0 = time.time()
 
@@ -131,13 +135,9 @@ if __name__ == '__main__':
         dur.append(time.time() - t0)
 
         print(
-            "Epoch {:05d} | Train Loss {:.4f} | Train Acc {:.4f} | Val Loss {:.4f} | Val Acc {:.4f} | Time(s) {:.4f}".format(
-                epoch, train_loss.item(), train_acc, val_loss, val_acc, sum(dur) / len(dur)))
+            "Epoch {:05d} | Train Loss {:.4f} | Train Acc {:.4f} | Val Loss {:.4f} | Val Acc {:.4f} | Time(s) {:.4f} | Patience {}/{}".format(
+                epoch, train_loss.item(), train_acc, val_loss, val_acc, sum(dur) / len(dur), curr_step, patience))
 
-        writer.add_scalar('Train Loss', train_loss.item(), epoch)
-        writer.add_scalar('Val Loss', val_loss, epoch)
-        writer.add_scalar('Train Acc', train_acc, epoch)
-        writer.add_scalar('Val Acc', val_acc, epoch)
 
         # Adapted from https://github.com/PetarV-/GAT/blob/master/execute_cora.py
         if val_acc >= vacc_mx or val_loss <= vlss_mn:
@@ -174,13 +174,5 @@ if __name__ == '__main__':
     results_dict['val_acc_max'] = vacc_mx
     results_dict['val_loss_min'] = vlss_mn
     results_dict['total_time'] = sum(dur)
-    with open(os.path.join('runs', f'{args.model}_{args.run_id}_results.txt'), 'w') as outfile:
-        outfile.write(json.dumps(results_dict) + '\n')
-    np.savez_compressed(os.path.join('runs', f'{args.model}_{args.run_id}_hidden_features.npz'),
-                        hidden_features=test_hidden_features)
-    np.savez_compressed(os.path.join('runs', f'{args.model}_{args.run_id}_final_train_predictions.npz'),
-                        final_train_predictions=final_train_pred)
-    np.savez_compressed(os.path.join('runs', f'{args.model}_{args.run_id}_final_val_predictions.npz'),
-                        final_val_predictions=final_val_pred)
-    np.savez_compressed(os.path.join('runs', f'{args.model}_{args.run_id}_final_test_predictions.npz'),
-                        final_test_predictions=final_test_pred)
+
+    print(f"Test acc: {test_acc}")
