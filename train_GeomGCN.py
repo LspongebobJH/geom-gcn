@@ -32,10 +32,11 @@ import torch.nn.functional as F
 
 import utils_data
 from utils_layers import GeomGCNNet
+from init_layers import init_layers
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--dataset', type=str, default='chameleon')
+    parser.add_argument('--dataset', type=str, default='cornell')
     parser.add_argument('--dataset_embedding', type=str, default='poincare')
     parser.add_argument('--num_hidden', type=int, default=48)
     parser.add_argument('--num_heads_layer_one', type=int, default=1)
@@ -51,7 +52,7 @@ if __name__ == '__main__':
     parser.add_argument('--num_epochs_patience', type=int, default=100)
     parser.add_argument('--num_epochs_max', type=int, default=5000)
     parser.add_argument('--run_id', type=str, default=0)
-    parser.add_argument('--dataset_split', type=str, default='splits/chameleon_split_0.6_0.2_5.npz')
+    parser.add_argument('--dataset_split', type=str, default='splits/cornell_split_0.6_0.2_5.npz')
     parser.add_argument('--learning_rate_decay_patience', type=int, default=50)
     parser.add_argument('--learning_rate_decay_factor', type=float, default=0.8)
     args = parser.parse_args()
@@ -87,7 +88,6 @@ if __name__ == '__main__':
     learning_rate_scheduler = th.optim.lr_scheduler.ReduceLROnPlateau(optimizer=optimizer,
                                                                       factor=args.learning_rate_decay_factor,
                                                                       patience=args.learning_rate_decay_patience)
-
     
     net.cuda()
     features = features.cuda()
@@ -95,6 +95,9 @@ if __name__ == '__main__':
     train_mask = train_mask.cuda()
     val_mask = val_mask.cuda()
     test_mask = test_mask.cuda()
+
+    # initialize layer with nim
+    a_list = init_layers(g, features, net, 'nimback')
 
     # Adapted from https://github.com/PetarV-/GAT/blob/master/execute_cora.py
     patience = args.num_epochs_patience
