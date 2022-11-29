@@ -223,7 +223,7 @@ def run_test():
     pipe(searchSpace)
 
 if __name__ == "__main__":
-    run='test'
+    run='ray'
     
     if run == 'test':
         run_test()
