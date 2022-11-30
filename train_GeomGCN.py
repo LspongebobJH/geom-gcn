@@ -37,7 +37,8 @@ from init_layers import init_layers
 from ray import tune
 
 def pipe(config:dict):
-    config['dataset_split'] = f"splits/{config['dataset']}_split_0.6_0.2_{config['dataset_split']}.npz"
+    par_path = '/mnt/jiahanli/datasets/geom-gcn'
+    config['dataset_split'] = f"{par_path}/splits/{config['dataset']}_split_0.6_0.2_{config['dataset_split']}.npz"
     args = argparse.Namespace(**config)
     vars(args)['model'] = 'GeomGCN_TwoLayers'
 
@@ -87,8 +88,6 @@ def pipe(config:dict):
     patience = args.num_epochs_patience
     vlss_mn = np.inf
     vacc_mx = 0.0
-    vacc_early_model = None
-    vlss_early_model = None
     state_dict_early_model = None
     curr_step = 0
 
@@ -194,12 +193,12 @@ def run_ray():
     print(searchSpace)
 
     analysis=tune.run(tune_pipe, config=searchSpace, name=f"{exp}", num_samples=num_samples, \
-        resources_per_trial={'cpu': 12, 'gpu':1}, log_to_file=f"out.log", \
+        resources_per_trial={'cpu': 1, 'gpu':1}, log_to_file=f"out.log", \
         local_dir="/mnt/jiahanli/nim_output", max_failures=3)
 
 def run_test():
     searchSpace = {
-        'dataset': 'chameleon',
+        'dataset': 'cornell',
         'dataset_embedding': 'poincare',
         'num_hidden': 48,
         'num_heads_layer_one': 1,

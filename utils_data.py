@@ -42,8 +42,8 @@ def load_data(dataset_name, splits_file_path=None, train_percentage=None, val_pe
         features = features.todense()
         G = nx.DiGraph(adj)
     else:
-        graph_adjacency_list_file_path = os.path.join('new_data', dataset_name, 'out1_graph_edges.txt')
-        graph_node_features_and_labels_file_path = os.path.join('new_data', dataset_name,
+        graph_adjacency_list_file_path = os.path.join('/mnt/jiahanli/datasets/geom-gcn', dataset_name, 'out1_graph_edges.txt')
+        graph_node_features_and_labels_file_path = os.path.join('/mnt/jiahanli/datasets/geom-gcn', dataset_name,
                                                                 f'out1_node_feature_label.txt')
 
         G = nx.DiGraph()
@@ -96,13 +96,13 @@ def load_data(dataset_name, splits_file_path=None, train_percentage=None, val_pe
         g = DGLGraph(adj + sp.eye(adj.shape[0]))
     else:
         if embedding_mode == 'ExperimentTwoAll':
-            embedding_file_path = os.path.join('embedding_method_combinations_all',
+            embedding_file_path = os.path.join('/mnt/jiahanli/datasets/geom-gcn/embedding_method_combinations_all',
                                                f'outf_nodes_relation_{dataset_name}all_embedding_methods.txt')
         elif embedding_mode == 'ExperimentTwoPairs':
-            embedding_file_path = os.path.join('embedding_method_combinations_in_pairs',
+            embedding_file_path = os.path.join('/mnt/jiahanli/datasets/geom-gcn/embedding_method_combinations_in_pairs',
                                                f'outf_nodes_relation_{dataset_name}_graph_{embedding_method_graph}_space_{embedding_method_space}.txt')
         else:
-            embedding_file_path = os.path.join('structural_neighborhood',
+            embedding_file_path = os.path.join('/mnt/jiahanli/datasets/geom-gcn/structural_neighborhood',
                                            f'outf_nodes_space_relation_{dataset_name}_{embedding_method}.txt')
         space_and_relation_type_to_idx_dict = {}
 
@@ -142,7 +142,7 @@ def load_data(dataset_name, splits_file_path=None, train_percentage=None, val_pe
         assert (train_percentage < 1.0 and val_percentage < 1.0 and train_percentage + val_percentage < 1.0)
 
         if dataset_name in {'cora', 'citeseer'}:
-            disconnected_node_file_path = os.path.join('unconnected_nodes', f'{dataset_name}_unconnected_nodes.txt')
+            disconnected_node_file_path = os.path.join('/mnt/jiahanli/datasets/geom-gcn/unconnected_nodes', f'{dataset_name}_unconnected_nodes.txt')
             with open(disconnected_node_file_path) as disconnected_node_file:
                 disconnected_node_file.readline()
                 disconnected_nodes = []
