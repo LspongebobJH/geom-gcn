@@ -166,10 +166,10 @@ def tune_pipe(config):
     tune.report(train_curve=train_curve, valid_curve=valid_curve, test_acc=test_acc)
 
 def run_ray():
-    exp = 64
+    exp = 65
     num_samples = 1
     searchSpace = {
-        'dataset': 'chameleon',
+        'dataset': 'cornell',
         'dataset_embedding': 'poincare',
         'num_hidden': tune.grid_search([32, 48, 64, 128]),
         'num_heads_layer_one': 1,
@@ -180,13 +180,13 @@ def run_ray():
         'layer_two_channel_merge': 'mean',
         'dropout_rate': tune.grid_search([0.0, 0.5]),
         'learning_rate': tune.grid_search([5e-3, 1e-3, 5e-2, 1e-2]),
-        'weight_decay_layer_one': tune.grid_search([5e-6, 1e-6, 5e-5, 1e-5]),
-        'weight_decay_layer_two': tune.grid_search([5e-6, 1e-6, 5e-5, 1e-5]),
+        'weight_decay_layer_one': tune.grid_search([5e-6, 1e-6]),
+        'weight_decay_layer_two': tune.grid_search([5e-6, 1e-6]),
         'num_epochs_patience': 100,
         'num_epochs_max': 5000,
         'dataset_split': tune.grid_search([0, 1, 2, 3, 4]),
-        'learning_rate_decay_patience': tune.grid_search([50, 70]),
-        'learning_rate_decay_factor': tune.grid_search([0.5, 0.8]),
+        'learning_rate_decay_patience': 50,
+        'learning_rate_decay_factor': 0.8,
         'init': tune.grid_search(['nimfor', 'nimback'])
     }
     
