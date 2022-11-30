@@ -184,7 +184,7 @@ def run_ray():
         'weight_decay_layer_two': tune.grid_search([5e-6, 1e-6]),
         'num_epochs_patience': 100,
         'num_epochs_max': 5000,
-        'dataset_split': tune.grid_search([0, 1, 2, 3, 4]),
+        'dataset_split': tune.grid_search([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]),
         'learning_rate_decay_patience': 50,
         'learning_rate_decay_factor': 0.8,
         'init': tune.grid_search(['nimfor', 'nimback'])
