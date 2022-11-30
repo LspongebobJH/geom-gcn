@@ -193,7 +193,7 @@ def run_ray():
     print(searchSpace)
 
     analysis=tune.run(tune_pipe, config=searchSpace, name=f"{exp}", num_samples=num_samples, \
-        resources_per_trial={'cpu': 1, 'gpu':1}, log_to_file=f"out.log", \
+        resources_per_trial={'cpu': 12, 'gpu':1}, log_to_file=f"out.log", \
         local_dir="/mnt/jiahanli/nim_output", max_failures=3)
 
 def run_test():
