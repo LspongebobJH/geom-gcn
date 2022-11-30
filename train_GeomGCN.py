@@ -171,7 +171,7 @@ def run_ray():
     searchSpace = {
         'dataset': 'cornell',
         'dataset_embedding': 'poincare',
-        'num_hidden': tune.grid_search([32, 48, 64, 128]),
+        'num_hidden': tune.grid_search([48, 128]),
         'num_heads_layer_one': 1,
         'num_heads_layer_two': 1,
         'layer_one_ggcn_merge': 'cat',
