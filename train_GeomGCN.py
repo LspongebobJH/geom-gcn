@@ -175,10 +175,10 @@ def tune_pipe(config):
     tune.report(train_curve=train_curve, valid_curve=valid_curve, test_acc=test_acc)
 
 def run_ray():
-    exp = 66
+    exp = 67
     num_samples = 1
     searchSpace = {
-        'dataset': 'texas',
+        'dataset': 'squirrel',
         'dataset_embedding': 'poincare',
         'num_hidden': tune.grid_search([48, 128]),
         'num_heads_layer_one': 1,
@@ -208,7 +208,7 @@ def run_ray():
 
 def run_test():
     searchSpace = {
-        'dataset': 'cornell',
+        'dataset': 'wisconsin',
         'dataset_embedding': 'poincare',
         'num_hidden': 48,
         'num_heads_layer_one': 1,
