@@ -179,7 +179,7 @@ def run_ray():
     exp = 68
     num_samples = 1
     searchSpace = {
-        'dataset': tune.grid_search(['wisconsin', 'flim']),
+        'dataset': tune.grid_search(['wisconsin', 'film']),
         'dataset_embedding': 'poincare',
         'num_hidden': tune.grid_search([48, 128]),
         'num_heads_layer_one': 1,
