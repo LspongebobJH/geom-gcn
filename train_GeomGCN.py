@@ -35,8 +35,11 @@ from utils_layers import GeomGCNNet
 from init_layers import init_layers
 
 from ray import tune
+import wandb
 
 def pipe(config:dict):
+    wandb.init(project='exp500', config=config, dir='/mnt/jiahanli/wandb', name=config['init'])
+
     par_path = '/mnt/jiahanli/datasets/geom-gcn'
     config['dataset_split'] = f"{par_path}/splits/{config['dataset']}_split_0.6_0.2_{config['dataset_split']}.npz"
     args = argparse.Namespace(**config)
@@ -120,6 +123,9 @@ def pipe(config:dict):
         train_curve.append(train_acc)
         valid_curve.append(val_acc)
 
+        wandb.log({'train_curve': train_acc})
+        wandb.log({'valid_curve': val_acc})
+
         learning_rate_scheduler.step(val_loss)
 
         dur.append(time.time() - t0)
@@ -159,6 +165,8 @@ def pipe(config:dict):
     results_dict['total_time'] = sum(dur)
 
     print(f"Test acc: {test_acc}")
+    wandb.log({'test_acc': test_acc})
+    wandb.finish()
     return train_curve, valid_curve, test_acc
 
 def tune_pipe(config):
@@ -166,10 +174,10 @@ def tune_pipe(config):
     tune.report(train_curve=train_curve, valid_curve=valid_curve, test_acc=test_acc)
 
 def run_ray():
-    exp = 65
+    exp = 66
     num_samples = 1
     searchSpace = {
-        'dataset': 'cornell',
+        'dataset': 'texas',
         'dataset_embedding': 'poincare',
         'num_hidden': tune.grid_search([48, 128]),
         'num_heads_layer_one': 1,
@@ -179,7 +187,7 @@ def run_ray():
         'layer_one_channel_merge': 'cat',
         'layer_two_channel_merge': 'mean',
         'dropout_rate': tune.grid_search([0.0, 0.5]),
-        'learning_rate': tune.grid_search([5e-3, 1e-3, 5e-2, 1e-2]),
+        'learning_rate': tune.grid_search([5e-2, 1e-2]),
         'weight_decay_layer_one': tune.grid_search([5e-6, 1e-6]),
         'weight_decay_layer_two': tune.grid_search([5e-6, 1e-6]),
         'num_epochs_patience': 100,
@@ -216,7 +224,7 @@ def run_test():
         'dataset_split': 5,
         'learning_rate_decay_patience': 50,
         'learning_rate_decay_factor': 0.8,
-        'init': 'xav'
+        'init': 'nimfor'
     }
     print(searchSpace)
     pipe(searchSpace)
