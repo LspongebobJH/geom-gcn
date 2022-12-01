@@ -39,7 +39,8 @@ import wandb
 
 def pipe(config:dict):
     exp = config['exp']
-    wandb.init(project=f"exp{exp}", config=config, dir='/mnt/jiahanli/wandb', name=config['init'])
+    name = config['dataset']+'/'+config['init']
+    wandb.init(project=f"exp{exp}", config=config, dir='/mnt/jiahanli/wandb', name=name)
 
     par_path = '/mnt/jiahanli/datasets/geom-gcn'
     config['dataset_split'] = f"{par_path}/splits/{config['dataset']}_split_0.6_0.2_{config['dataset_split']}.npz"
@@ -175,10 +176,10 @@ def tune_pipe(config):
     tune.report(train_curve=train_curve, valid_curve=valid_curve, test_acc=test_acc)
 
 def run_ray():
-    exp = 67
+    exp = 68
     num_samples = 1
     searchSpace = {
-        'dataset': 'squirrel',
+        'dataset': tune.grid_search(['wisconsin', 'flim']),
         'dataset_embedding': 'poincare',
         'num_hidden': tune.grid_search([48, 128]),
         'num_heads_layer_one': 1,
@@ -208,7 +209,7 @@ def run_ray():
 
 def run_test():
     searchSpace = {
-        'dataset': 'wisconsin',
+        'dataset': 'cornell',
         'dataset_embedding': 'poincare',
         'num_hidden': 48,
         'num_heads_layer_one': 1,
