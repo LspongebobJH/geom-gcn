@@ -38,7 +38,8 @@ from ray import tune
 import wandb
 
 def pipe(config:dict):
-    wandb.init(project='exp500', config=config, dir='/mnt/jiahanli/wandb', name=config['init'])
+    exp = config['exp']
+    wandb.init(project=f"exp{exp}", config=config, dir='/mnt/jiahanli/wandb', name=config['init'])
 
     par_path = '/mnt/jiahanli/datasets/geom-gcn'
     config['dataset_split'] = f"{par_path}/splits/{config['dataset']}_split_0.6_0.2_{config['dataset_split']}.npz"
@@ -195,7 +196,8 @@ def run_ray():
         'dataset_split': tune.grid_search([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]),
         'learning_rate_decay_patience': 50,
         'learning_rate_decay_factor': 0.8,
-        'init': tune.grid_search(['nimfor', 'nimback'])
+        'init': tune.grid_search(['nimfor', 'nimback']),
+        'exp': exp
     }
     
     print(searchSpace)
@@ -224,7 +226,8 @@ def run_test():
         'dataset_split': 5,
         'learning_rate_decay_patience': 50,
         'learning_rate_decay_factor': 0.8,
-        'init': 'nimfor'
+        'init': 'nimfor',
+        'exp': 500
     }
     print(searchSpace)
     pipe(searchSpace)
