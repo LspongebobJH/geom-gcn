@@ -176,10 +176,10 @@ def tune_pipe(config):
     tune.report(train_curve=train_curve, valid_curve=valid_curve, test_acc=test_acc)
 
 def run_ray():
-    exp = 68
+    exp = 71
     num_samples = 1
     searchSpace = {
-        'dataset': tune.grid_search(['wisconsin', 'film']),
+        'dataset': tune.grid_search(['cornell', 'texas', 'wisconsin', 'squirrel']),
         'dataset_embedding': 'poincare',
         'num_hidden': tune.grid_search([48, 128]),
         'num_heads_layer_one': 1,
@@ -197,7 +197,7 @@ def run_ray():
         'dataset_split': tune.grid_search([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]),
         'learning_rate_decay_patience': 50,
         'learning_rate_decay_factor': 0.8,
-        'init': tune.grid_search(['nimfor', 'nimback']),
+        'init': 'xav',
         'exp': exp
     }
     
